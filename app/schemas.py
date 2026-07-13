@@ -42,3 +42,10 @@ class UserRead(BaseModel):
 
     id: int
     email: str
+
+
+class TokenResponse(BaseModel):
+    """Schema used to return a JWT access token."""
+
+    access_token: str
+    token_type: str = "bearer"

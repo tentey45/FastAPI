@@ -5,7 +5,7 @@ from app.auth import create_access_token, get_user_by_email, hash_password, veri
 from app.database import SessionLocal
 from app.dependencies import get_current_authenticated_user
 from app.models import User
-from app.schemas import UserCreate, UserLogin, UserRead
+from app.schemas import TokenResponse, UserCreate, UserLogin, UserRead
 
 router = APIRouter(tags=["auth"])
 
@@ -41,17 +41,18 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)) -> User
 
 @router.post(
     "/login",
+    response_model=TokenResponse,
     summary="Log in and receive a JWT",
     description="Authenticate a user and return a JWT access token for protected endpoints.",
 )
-async def login_user(user: UserLogin, db: Session = Depends(get_db)) -> dict[str, str]:
+async def login_user(user: UserLogin, db: Session = Depends(get_db)) -> TokenResponse:
     """Authenticate a user and return a JWT access token."""
     db_user = get_user_by_email(db, user.email)
     if db_user is None or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token(subject=db_user.email)
-    return {"access_token": token, "token_type": "bearer"}
+    return TokenResponse(access_token=token)
 
 
 @router.get(
