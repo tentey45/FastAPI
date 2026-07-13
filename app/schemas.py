@@ -23,6 +23,14 @@ class TodoUpdate(BaseModel):
     completed: bool | None = None
 
 
+class TodoListQuery(BaseModel):
+    """Optional query parameters for filtering and paginating todos."""
+
+    completed: bool | None = None
+    limit: int = Field(default=10, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
 class UserCreate(BaseModel):
     """Schema used to register a new user."""
 
@@ -45,10 +53,17 @@ class UserRead(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Schema used to return a JWT access token."""
+    """Schema used to return JWT tokens."""
 
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    """Schema used to request a new access token from a refresh token."""
+
+    refresh_token: str = Field(..., min_length=1)
 
 
 class PasswordChange(BaseModel):

@@ -1,6 +1,6 @@
+import os
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -20,7 +20,7 @@ class Settings:
 def get_settings() -> Settings:
     """Return cached application settings."""
     return Settings(
-        app_name="Todo App",
-        debug=True,
-        log_level="INFO",
+        app_name=os.getenv("APP_NAME", "Todo App"),
+        debug=os.getenv("DEBUG", "false").lower() in {"1", "true", "yes", "on"},
+        log_level=os.getenv("LOG_LEVEL", "INFO"),
     )

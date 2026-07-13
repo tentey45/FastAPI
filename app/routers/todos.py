@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_authenticated_user, get_db
@@ -25,11 +25,18 @@ async def create_todo(
 
 @router.get("", response_model=list[TodoRead])
 async def list_todos(
+    completed: bool | None = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_authenticated_user),
 ) -> list[Todo]:
-    """Return all todo items for the authenticated user."""
-    return db.query(Todo).filter(Todo.owner_id == current_user.id).all()
+    """Return todo items for the authenticated user with optional filtering and pagination."""
+    query = db.query(Todo).filter(Todo.owner_id == current_user.id)
+    if completed is not None:
+        query = query.filter(Todo.completed.is_(completed))
+
+    return query.order_by(Todo.id).offset(offset).limit(limit).all()
 
 
 @router.get("/{todo_id}", response_model=TodoRead)
