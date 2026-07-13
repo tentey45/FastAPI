@@ -19,7 +19,13 @@ def get_db() -> Session:
         db.close()
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user",
+    description="Create a new user account with an email and password.",
+)
 async def register_user(user: UserCreate, db: Session = Depends(get_db)) -> User:
     """Register a new user."""
     existing_user = get_user_by_email(db, user.email)
@@ -33,7 +39,11 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)) -> User
     return db_user
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    summary="Log in and receive a JWT",
+    description="Authenticate a user and return a JWT access token for protected endpoints.",
+)
 async def login_user(user: UserLogin, db: Session = Depends(get_db)) -> dict[str, str]:
     """Authenticate a user and return a JWT access token."""
     db_user = get_user_by_email(db, user.email)
@@ -44,7 +54,12 @@ async def login_user(user: UserLogin, db: Session = Depends(get_db)) -> dict[str
     return {"access_token": token, "token_type": "bearer"}
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Get the current authenticated user",
+    description="Return the profile of the currently authenticated user using a bearer token.",
+)
 async def get_me(current_user: User = Depends(get_current_authenticated_user)) -> User:
     """Return the currently authenticated user's profile."""
     return current_user
