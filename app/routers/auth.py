@@ -5,7 +5,7 @@ from app.auth import create_access_token, get_user_by_email, hash_password, veri
 from app.database import SessionLocal
 from app.dependencies import get_current_authenticated_user
 from app.models import User
-from app.schemas import TokenResponse, UserCreate, UserLogin, UserRead
+from app.schemas import PasswordChange, TokenResponse, UserCreate, UserLogin, UserRead
 
 router = APIRouter(tags=["auth"])
 
@@ -64,3 +64,22 @@ async def login_user(user: UserLogin, db: Session = Depends(get_db)) -> TokenRes
 async def get_me(current_user: User = Depends(get_current_authenticated_user)) -> User:
     """Return the currently authenticated user's profile."""
     return current_user
+
+
+@router.post(
+    "/change-password",
+    summary="Change the current user's password",
+    description="Update the password for the authenticated user after verifying the current password.",
+)
+async def change_password(
+    password_data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user),
+) -> dict[str, str]:
+    """Change the authenticated user's password."""
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    current_user.hashed_password = hash_password(password_data.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}

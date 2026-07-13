@@ -49,3 +49,10 @@ class TokenResponse(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
+
+
+class PasswordChange(BaseModel):
+    """Schema used to change an authenticated user's password."""
+
+    current_password: str = Field(..., min_length=6, max_length=255)
+    new_password: str = Field(..., min_length=6, max_length=255)
