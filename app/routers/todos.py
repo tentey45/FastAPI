@@ -2,9 +2,16 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_authenticated_user, get_db
-from app.exceptions import TodoNotFoundError
-from app.models import Todo, User
-from app.schemas import TodoCreate, TodoRead, TodoUpdate
+from app.exceptions import ChecklistItemNotFoundError, TodoNotFoundError
+from app.models import ChecklistItem, Todo, User
+from app.schemas import (
+    ChecklistItemCreate,
+    ChecklistItemRead,
+    ChecklistItemUpdate,
+    TodoCreate,
+    TodoRead,
+    TodoUpdate,
+)
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 
@@ -26,6 +33,7 @@ async def create_todo(
 @router.get("", response_model=list[TodoRead])
 async def list_todos(
     completed: bool | None = Query(default=None),
+    folder_id: int | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -35,6 +43,8 @@ async def list_todos(
     query = db.query(Todo).filter(Todo.owner_id == current_user.id)
     if completed is not None:
         query = query.filter(Todo.completed.is_(completed))
+    if folder_id is not None:
+        query = query.filter(Todo.folder_id == folder_id)
 
     return query.order_by(Todo.id).offset(offset).limit(limit).all()
 
@@ -85,3 +95,68 @@ async def delete_todo(
 
     db.delete(todo)
     db.commit()
+
+
+@router.post("/{todo_id}/checklist", response_model=ChecklistItemRead, status_code=status.HTTP_201_CREATED)
+async def create_checklist_item(
+    todo_id: int,
+    item: ChecklistItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user),
+) -> ChecklistItem:
+    """Create a new checklist item for a todo task."""
+    todo = db.query(Todo).filter(Todo.id == todo_id, Todo.owner_id == current_user.id).first()
+    if todo is None:
+        raise TodoNotFoundError()
+
+    db_item = ChecklistItem(**item.model_dump(), todo_id=todo_id)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@router.put("/{todo_id}/checklist/{item_id}", response_model=ChecklistItemRead)
+async def update_checklist_item(
+    todo_id: int,
+    item_id: int,
+    item_update: ChecklistItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user),
+) -> ChecklistItem:
+    """Update a checklist item's title or completed status."""
+    todo = db.query(Todo).filter(Todo.id == todo_id, Todo.owner_id == current_user.id).first()
+    if todo is None:
+        raise TodoNotFoundError()
+
+    db_item = db.query(ChecklistItem).filter(ChecklistItem.id == item_id, ChecklistItem.todo_id == todo_id).first()
+    if db_item is None:
+        raise ChecklistItemNotFoundError()
+
+    for field, value in item_update.model_dump(exclude_unset=True).items():
+        setattr(db_item, field, value)
+
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@router.delete("/{todo_id}/checklist/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_checklist_item(
+    todo_id: int,
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_authenticated_user),
+) -> None:
+    """Delete a checklist item."""
+    todo = db.query(Todo).filter(Todo.id == todo_id, Todo.owner_id == current_user.id).first()
+    if todo is None:
+        raise TodoNotFoundError()
+
+    db_item = db.query(ChecklistItem).filter(ChecklistItem.id == item_id, ChecklistItem.todo_id == todo_id).first()
+    if db_item is None:
+        raise ChecklistItemNotFoundError()
+
+    db.delete(db_item)
+    db.commit()
+

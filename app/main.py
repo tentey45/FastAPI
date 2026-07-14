@@ -1,14 +1,20 @@
 import logging
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.error_handlers import todo_not_found_handler, validation_exception_handler
-from app.exceptions import TodoNotFoundError
+from app.error_handlers import (
+    checklist_item_not_found_handler,
+    folder_not_found_handler,
+    todo_not_found_handler,
+    validation_exception_handler,
+)
+from app.exceptions import ChecklistItemNotFoundError, FolderNotFoundError, TodoNotFoundError
 from app.logging_config import setup_logging
 from app.routers.auth import router as auth_router
+from app.routers.folders import router as folders_router
 from app.routers.health import router as health_router
 from app.routers.todos import router as todos_router
 
@@ -27,9 +33,13 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(folders_router)
 app.include_router(todos_router)
 app.add_exception_handler(TodoNotFoundError, todo_not_found_handler)
+app.add_exception_handler(FolderNotFoundError, folder_not_found_handler)
+app.add_exception_handler(ChecklistItemNotFoundError, checklist_item_not_found_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
 
 
 @app.get("/")
