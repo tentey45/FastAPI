@@ -15,7 +15,9 @@ Base = declarative_base()
 
 def init_db() -> None:
     """Create tables and upgrade older SQLite schemas when needed."""
+    from app import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
 
     inspector = inspect(engine)
     if "todos" in inspector.get_table_names():
@@ -24,6 +26,10 @@ def init_db() -> None:
             with engine.begin() as connection:
                 connection.execute(text("ALTER TABLE todos ADD COLUMN owner_id INTEGER"))
                 connection.execute(text("UPDATE todos SET owner_id = 1 WHERE owner_id IS NULL"))
+        if "folder_id" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE todos ADD COLUMN folder_id INTEGER"))
+
 
 
 init_db()

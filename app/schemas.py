@@ -1,4 +1,48 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ChecklistItemCreate(BaseModel):
+    """Schema used to create a new checklist item."""
+
+    title: str = Field(..., min_length=1, max_length=255)
+    completed: bool = False
+
+
+class ChecklistItemRead(ChecklistItemCreate):
+    """Schema used to return a checklist item."""
+
+    id: int
+    todo_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChecklistItemUpdate(BaseModel):
+    """Schema used to update an existing checklist item."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    completed: bool | None = None
+
+
+class FolderCreate(BaseModel):
+    """Schema used to create a new folder."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+
+
+class FolderRead(FolderCreate):
+    """Schema used to return a folder."""
+
+    id: int
+    owner_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FolderUpdate(BaseModel):
+    """Schema used to update a folder."""
+
+    name: str = Field(..., min_length=1, max_length=255)
 
 
 class TodoCreate(BaseModel):
@@ -7,12 +51,16 @@ class TodoCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=500)
     completed: bool = False
+    folder_id: int | None = None
 
 
 class TodoRead(TodoCreate):
     """Schema used to return a todo item."""
 
     id: int
+    checklist_items: list[ChecklistItemRead] = []
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TodoUpdate(BaseModel):
@@ -21,6 +69,7 @@ class TodoUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=500)
     completed: bool | None = None
+    folder_id: int | None = None
 
 
 class TodoListQuery(BaseModel):
