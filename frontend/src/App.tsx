@@ -26,6 +26,11 @@ function App() {
   const [description, setDescription] = useState('')
   const [message, setMessage] = useState('')
 
+  // Edit Todo state
+  const [editingTodoId, setEditingTodoId] = useState<number | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+
   useEffect(() => {
     if (!token) return
     fetch(`${API_BASE_URL}/todos`, {
@@ -81,6 +86,72 @@ function App() {
     setTitle('')
     setDescription('')
     setMessage('Todo created')
+  }
+
+  async function handleToggleComplete(todo: Todo) {
+    if (!token) return
+    const response = await fetch(`${API_BASE_URL}/todos/${todo.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ completed: !todo.completed }),
+    })
+
+    if (!response.ok) {
+      setMessage('Unable to update todo status')
+      return
+    }
+
+    const updatedTodo = (await response.json()) as Todo
+    setTodos((current) => current.map((t) => (t.id === todo.id ? updatedTodo : t)))
+  }
+
+  async function handleDeleteTodo(id: number) {
+    if (!token) return
+    const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      setMessage('Unable to delete todo')
+      return
+    }
+
+    setTodos((current) => current.filter((t) => t.id !== id))
+    setMessage('Todo deleted')
+  }
+
+  function startEditing(todo: Todo) {
+    setEditingTodoId(todo.id)
+    setEditTitle(todo.title)
+    setEditDescription(todo.description || '')
+  }
+
+  async function handleSaveEdit(todoId: number) {
+    if (!token) return
+    const response = await fetch(`${API_BASE_URL}/todos/${todoId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ title: editTitle, description: editDescription }),
+    })
+
+    if (!response.ok) {
+      setMessage('Unable to save todo changes')
+      return
+    }
+
+    const updatedTodo = (await response.json()) as Todo
+    setTodos((current) => current.map((t) => (t.id === todoId ? updatedTodo : t)))
+    setEditingTodoId(null)
+    setMessage('Todo updated')
   }
 
   function handleLogout() {
@@ -142,10 +213,54 @@ function App() {
             {todos.length === 0 ? <p>No todos yet.</p> : null}
             <ul className="todo-list">
               {todos.map((todo) => (
-                <li key={todo.id}>
-                  <strong>{todo.title}</strong>
-                  {todo.description ? <p>{todo.description}</p> : null}
-                  <span>{todo.completed ? 'Completed' : 'Pending'}</span>
+                <li key={todo.id} className="todo-item-container">
+                  {editingTodoId === todo.id ? (
+                    <div className="edit-form">
+                      <input
+                        value={editTitle}
+                        onChange={(event) => setEditTitle(event.target.value)}
+                        placeholder="Todo title"
+                      />
+                      <input
+                        value={editDescription}
+                        onChange={(event) => setEditDescription(event.target.value)}
+                        placeholder="Description"
+                      />
+                      <div className="edit-actions">
+                        <button onClick={() => handleSaveEdit(todo.id)} type="button" className="save-btn">
+                          Save
+                        </button>
+                        <button onClick={() => setEditingTodoId(null)} type="button" className="cancel-btn">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="todo-view">
+                      <div className="todo-content">
+                        <input
+                          type="checkbox"
+                          checked={todo.completed}
+                          onChange={() => handleToggleComplete(todo)}
+                          className="todo-checkbox"
+                        />
+                        <div className="todo-text">
+                          <strong className={todo.completed ? 'completed-text' : ''}>
+                            {todo.title}
+                          </strong>
+                          {todo.description ? <p>{todo.description}</p> : null}
+                        </div>
+                      </div>
+                      <div className="todo-actions">
+                        <button onClick={() => startEditing(todo)} type="button" className="edit-btn">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteTodo(todo.id)} type="button" className="delete-btn">
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
